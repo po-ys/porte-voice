@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ポルテ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    /* 背景動画 */
+    #bg-video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    /* 下部ボタンと説明 */
+    .footer {
+      position: absolute;
+      bottom: 5%;
+      width: 100%;
+      text-align: center;
+      color: white;
+      text-shadow: 0 0 10px black;
+    }
+
+    button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background-color: rgba(0, 0, 0, 0.6);
+      color: white;
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    p {
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+
+    .header {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 背景動画 -->
+  <video id="bg-video" src="porte.mp4" autoplay muted loop playsinline></video>
+
+  <!-- 見出しは非表示 -->
+  <div class="header">
+    <h1>ポルテ</h1>
+  </div>
+
+  <!-- 下部スタートボタンと説明 -->
+  <div class="footer">
+    <button id="start-btn">▶ スタート</button>
+    <p id="start-msg">※最初に1回だけボタンを押してください。</p>
+  </div>
+
+  <!-- 音声ファイル -->
+  <audio id="porte-audio" src="porte1.mp3" preload="auto"></audio>
+  <audio id="porte2-audio" src="porte2.mp3" preload="auto"></audio>
+  <audio id="porte3-audio" src="porte3.mp3" preload="auto"></audio>
+  <audio id="porte4-audio" src="porte4.mp3" preload="auto"></audio>
+
+  <script>
+    const btn = document.getElementById("start-btn");
+    const msg = document.getElementById("start-msg");
+    const audio1 = document.getElementById("porte-audio");
+    const audio2 = document.getElementById("porte2-audio");
+    const audio3 = document.getElementById("porte3-audio");
+    const audio4 = document.getElementById("porte4-audio");
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("このブラウザは音声認識に対応していません。");
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      let isListening = false;
+      let lastHeard = Date.now();
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        console.log("認識:", transcript);
+        lastHeard = Date.now();
+
+        if (/ポルテ.*お水|お水.*ポルテ/.test(transcript)) {
+          audio2.play().catch(e => console.error("再生エラー:", e));
+        } else if (/ポルテ.*おやつ|おやつ.*ポルテ/.test(transcript)) {
+          audio3.play().catch(e => console.error("再生エラー:", e));
+        } else if (/ポルテ.*お散歩|お散歩.*ポルテ/.test(transcript)) {
+          audio4.play().catch(e => console.error("再生エラー:", e));
+        } else if (/ポルテ/.test(transcript)) {
+          audio1.play().catch(e => console.error("再生エラー:", e));
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("認識エラー:", event.error);
+      };
+
+      recognition.onend = () => {
+        console.log("認識終了。再起動します...");
+        setTimeout(() => {
+          recognition.start();
+        }, 500);
+      };
+
+      setInterval(() => {
+        const now = Date.now();
+        if (isListening && now - lastHeard > 15000) {
+          console.log("無音状態が続いたため音声認識を再起動します");
+          recognition.stop();
+        }
+      }, 5000);
+
+      btn.addEventListener("click", () => {
+        audio1.play().then(() => {
+          audio1.pause();
+          recognition.start();
+          isListening = true;
+          btn.classList.add("hidden");
+          msg.classList.add("hidden");
+          console.log("音声認識開始");
+        }).catch((e) => {
+          alert("音声再生の許可が得られませんでした。もう一度ボタンを押してください。");
+        });
+      });
+    }
+  </script>
+</body>
+</html>
