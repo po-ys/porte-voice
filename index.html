@@ -70,7 +70,7 @@
 
   <!-- 下部スタートボタンと説明 -->
   <div class="footer">
-    <button id="start-btn">▶ スタート</button>
+    <button id="start-btn" aria-label="音声認識を開始する">▶ スタート</button>
     <p id="start-msg">※最初に1回だけボタンを押してください。</p>
   </div>
 
@@ -106,14 +106,15 @@
         console.log("認識:", transcript);
         lastHeard = Date.now();
 
-        if (/ポルテ.*お水|お水.*ポルテ/.test(transcript)) {
-          audio2.play().catch(e => console.error("再生エラー:", e));
-        } else if (/ポルテ.*おやつ|おやつ.*ポルテ/.test(transcript)) {
-          audio3.play().catch(e => console.error("再生エラー:", e));
-        } else if (/ポルテ.*お散歩|お散歩.*ポルテ/.test(transcript)) {
-          audio4.play().catch(e => console.error("再生エラー:", e));
-        } else if (/ポルテ/.test(transcript)) {
+        // 音声コマンドの処理
+        if (/ポルテ|ポーチャン|お水飲んだの/.test(transcript)) {
           audio1.play().catch(e => console.error("再生エラー:", e));
+        } else if (/ご飯食べますか/.test(transcript)) {
+          audio2.play().catch(e => console.error("再生エラー:", e));
+        } else if (/おやつ食べますか/.test(transcript)) {
+          audio3.play().catch(e => console.error("再生エラー:", e));
+        } else if (/お散歩いきますか/.test(transcript)) {
+          audio4.play().catch(e => console.error("再生エラー:", e));
         }
       };
 
@@ -124,10 +125,11 @@
       recognition.onend = () => {
         console.log("認識終了。再起動します...");
         setTimeout(() => {
-          recognition.start();
+          if (isListening) recognition.start();
         }, 500);
       };
 
+      // 無音で止まるのを防ぐ
       setInterval(() => {
         const now = Date.now();
         if (isListening && now - lastHeard > 15000) {
@@ -136,9 +138,14 @@
         }
       }, 5000);
 
+      // スタートボタンで初期再生→認識開始
       btn.addEventListener("click", () => {
-        audio1.play().then(() => {
-          audio1.pause();
+        Promise.all([
+          audio1.play().then(() => audio1.pause()),
+          audio2.play().then(() => audio2.pause()),
+          audio3.play().then(() => audio3.pause()),
+          audio4.play().then(() => audio4.pause())
+        ]).then(() => {
           recognition.start();
           isListening = true;
           btn.classList.add("hidden");
