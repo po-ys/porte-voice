@@ -13,7 +13,6 @@
       font-family: sans-serif;
     }
 
-    /* 背景動画 */
     #bg-video {
       position: fixed;
       top: 0;
@@ -24,7 +23,6 @@
       z-index: -1;
     }
 
-    /* 下部ボタンと説明 */
     .footer {
       position: absolute;
       bottom: 5%;
@@ -68,7 +66,7 @@
     <h1>ポルテ</h1>
   </div>
 
-  <!-- 下部スタートボタンと説明 -->
+  <!-- スタートボタン -->
   <div class="footer">
     <button id="start-btn" aria-label="音声認識を開始する">▶ スタート</button>
     <p id="start-msg">※最初に1回だけボタンを押してください。</p>
@@ -97,65 +95,3 @@
       recognition.lang = 'ja-JP';
       recognition.continuous = true;
       recognition.interimResults = false;
-
-      let isListening = false;
-      let lastHeard = Date.now();
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.trim();
-        console.log("認識:", transcript);
-        lastHeard = Date.now();
-
-        // 音声コマンドの処理
-        if (/ぽるて|ぽーちゃん|おみずのんだの/.test(transcript)) {
-          audio1.play().catch(e => console.error("再生エラー:", e));
-        } else if (/ごはんたべますか/.test(transcript)) {
-          audio2.play().catch(e => console.error("再生エラー:", e));
-        } else if (/おやつたべますか/.test(transcript)) {
-          audio3.play().catch(e => console.error("再生エラー:", e));
-        } else if (/おさんぽいきますか/.test(transcript)) {
-          audio4.play().catch(e => console.error("再生エラー:", e));
-        }
-      };
-
-      recognition.onerror = (event) => {
-        console.error("認識エラー:", event.error);
-      };
-
-      recognition.onend = () => {
-        console.log("認識終了。再起動します...");
-        setTimeout(() => {
-          if (isListening) recognition.start();
-        }, 500);
-      };
-
-      // 無音で止まるのを防ぐ
-      setInterval(() => {
-        const now = Date.now();
-        if (isListening && now - lastHeard > 15000) {
-          console.log("無音状態が続いたため音声認識を再起動します");
-          recognition.stop();
-        }
-      }, 5000);
-
-      // スタートボタンで初期再生→認識開始
-      btn.addEventListener("click", () => {
-        Promise.all([
-          audio1.play().then(() => audio1.pause()),
-          audio2.play().then(() => audio2.pause()),
-          audio3.play().then(() => audio3.pause()),
-          audio4.play().then(() => audio4.pause())
-        ]).then(() => {
-          recognition.start();
-          isListening = true;
-          btn.classList.add("hidden");
-          msg.classList.add("hidden");
-          console.log("音声認識開始");
-        }).catch((e) => {
-          alert("音声再生の許可が得られませんでした。もう一度ボタンを押してください。");
-        });
-      });
-    }
-  </script>
-</body>
-</html>
