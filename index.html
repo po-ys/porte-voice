@@ -107,13 +107,13 @@
         lastHeard = Date.now();
 
         // 音声コマンドの処理
-        if (/ポルテ|ポーチャン|お水飲んだの/.test(transcript)) {
+        if (/ぽるて|ぽーちゃん|おみずのんだの/.test(transcript)) {
           audio1.play().catch(e => console.error("再生エラー:", e));
-        } else if (/ご飯食べますか/.test(transcript)) {
+        } else if (/ごはんたべますか/.test(transcript)) {
           audio2.play().catch(e => console.error("再生エラー:", e));
-        } else if (/おやつ食べますか/.test(transcript)) {
+        } else if (/おやつたべますか/.test(transcript)) {
           audio3.play().catch(e => console.error("再生エラー:", e));
-        } else if (/お散歩いきますか/.test(transcript)) {
+        } else if (/おさんぽいきますか/.test(transcript)) {
           audio4.play().catch(e => console.error("再生エラー:", e));
         }
       };
