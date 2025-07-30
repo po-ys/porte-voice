@@ -54,25 +54,35 @@
     .header {
       display: none;
     }
+
+    #log {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 5px 10px;
+      font-size: 0.8em;
+      border-radius: 5px;
+      max-width: 90%;
+    }
   </style>
 </head>
 <body>
 
-  <!-- 背景動画 -->
   <video id="bg-video" src="porte.mp4" autoplay muted loop playsinline></video>
 
-  <!-- 見出しは非表示 -->
   <div class="header">
     <h1>ポルテ</h1>
   </div>
 
-  <!-- スタートボタン -->
   <div class="footer">
-    <button id="start-btn" aria-label="音声認識を開始する">▶ スタート</button>
+    <button id="start-btn">▶ スタート</button>
     <p id="start-msg">※最初に1回だけボタンを押してください。</p>
   </div>
 
-  <!-- 音声ファイル -->
+  <div id="log">音声認識待機中...</div>
+
   <audio id="porte1-audio" src="porte1.mp3" preload="auto"></audio>
   <audio id="porte2-audio" src="porte2.mp3" preload="auto"></audio>
   <audio id="porte3-audio" src="porte3.mp3" preload="auto"></audio>
@@ -81,6 +91,8 @@
   <script>
     const btn = document.getElementById("start-btn");
     const msg = document.getElementById("start-msg");
+    const log = document.getElementById("log");
+
     const audio1 = document.getElementById("porte1-audio");
     const audio2 = document.getElementById("porte2-audio");
     const audio3 = document.getElementById("porte3-audio");
@@ -95,3 +107,86 @@
       recognition.lang = 'ja-JP';
       recognition.continuous = true;
       recognition.interimResults = false;
+
+      let isListening = false;
+      let lastHeard = Date.now();
+
+      recognition.onresult = (event) => {
+        let transcript = event.results[event.results.length - 1][0].transcript.trim();
+        console.log("認識:", transcript);
+        log.innerText = `認識：${transcript}`;
+        lastHeard = Date.now();
+
+        // 正規化：ひらがな化、空白削除
+        transcript = transcript
+          .replace(/[ァ-ン]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60)) // カタカナ→ひらがな
+          .replace(/ー/g, "ー") // 長音そのまま
+          .replace(/\s/g, '')   // 空白削除
+          .toLowerCase();
+
+        console.log("正規化済み:", transcript);
+
+        if (
+          transcript.includes("ぽるて") ||
+          transcript.includes("ぽーちゃん") ||
+          transcript.includes("ぽおちゃん") ||
+          transcript.includes("ぽーちやん") ||
+          (transcript.includes("ぽ") && transcript.includes("ちゃん")) ||
+          transcript.includes("おみずのんだの")
+        ) {
+          audio1.play().catch(e => console.error("再生エラー:", e));
+        } else if (
+          transcript.includes("ごはんたべますか")
+        ) {
+          audio2.play().catch(e => console.error("再生エラー:", e));
+        } else if (
+          transcript.includes("おやつたべますか")
+        ) {
+          audio3.play().catch(e => console.error("再生エラー:", e));
+        } else if (
+          transcript.includes("おさんぽいきますか") ||
+          transcript.includes("おさんぽいこうか") ||
+          transcript.includes("おさんぽ") ||
+          transcript.includes("さんぽいきますか") ||
+          transcript.includes("おさんぽいく")
+        ) {
+          audio4.play().catch(e => console.error("再生エラー:", e));
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("認識エラー:", event.error);
+      };
+
+      recognition.onend = () => {
+        console.log("認識終了。再起動します...");
+        setTimeout(() => {
+          recognition.start();
+        }, 500);
+      };
+
+      setInterval(() => {
+        const now = Date.now();
+        if (isListening && now - lastHeard > 15000) {
+          console.log("無音状態が続いたため音声認識を再起動します");
+          recognition.stop();
+        }
+      }, 5000);
+
+      btn.addEventListener("click", () => {
+        audio1.play().then(() => {
+          audio1.pause();
+          recognition.start();
+          isListening = true;
+          btn.classList.add("hidden");
+          msg.classList.add("hidden");
+          log.innerText = "音声認識を開始しました。";
+          console.log("音声認識開始");
+        }).catch((e) => {
+          alert("音声再生の許可が得られませんでした。もう一度ボタンを押してください。");
+        });
+      });
+    }
+  </script>
+</body>
+</html>
