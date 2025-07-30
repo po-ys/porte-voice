@@ -1,70 +1,36 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>ポルテ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      font-family: sans-serif;
+      margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif;
     }
-
     #bg-video {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: -1;
     }
-
     .footer {
-      position: absolute;
-      bottom: 5%;
-      width: 100%;
-      text-align: center;
-      color: white;
-      text-shadow: 0 0 10px black;
+      position: absolute; bottom: 5%; width: 100%; text-align: center;
+      color: white; text-shadow: 0 0 10px black;
     }
-
     button {
-      font-size: 1.2em;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 10px;
+      font-size: 1.2em; padding: 10px 20px;
+      border: none; border-radius: 10px;
       background-color: rgba(0, 0, 0, 0.6);
-      color: white;
-      cursor: pointer;
+      color: white; cursor: pointer;
     }
-
-    .hidden {
-      display: none;
-    }
-
-    p {
-      margin-top: 10px;
-      font-size: 0.9em;
-    }
-
-    .header {
-      display: none;
-    }
-
+    .hidden { display: none; }
+    p { margin-top: 10px; font-size: 0.9em; }
+    .header { display: none; }
     #log {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 5px 10px;
-      font-size: 0.8em;
-      border-radius: 5px;
-      max-width: 90%;
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.6); color: white;
+      padding: 5px 10px; font-size: 0.8em;
+      border-radius: 5px; max-width: 90%;
+      word-break: break-word;
     }
   </style>
 </head>
@@ -117,11 +83,11 @@
         log.innerText = `認識：${transcript}`;
         lastHeard = Date.now();
 
-        // 正規化：ひらがな化、空白削除
+        // 正規化処理：カタカナ→ひらがな、小文字化、空白除去
         transcript = transcript
-          .replace(/[ァ-ン]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60)) // カタカナ→ひらがな
-          .replace(/ー/g, "ー") // 長音そのまま
-          .replace(/\s/g, '')   // 空白削除
+          .replace(/[ァ-ン]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60))
+          .replace(/ー/g, "ー")
+          .replace(/\s/g, '')
           .toLowerCase();
 
         console.log("正規化済み:", transcript);
@@ -132,23 +98,23 @@
           transcript.includes("ぽおちゃん") ||
           transcript.includes("ぽーちやん") ||
           (transcript.includes("ぽ") && transcript.includes("ちゃん")) ||
-          transcript.includes("お水飲んだの")
+          transcript.includes("おみずのんだの")
         ) {
           audio1.play().catch(e => console.error("再生エラー:", e));
         } else if (
-          transcript.includes("ご飯たべますか")
+          transcript.includes("ごはんたべますか")
         ) {
           audio2.play().catch(e => console.error("再生エラー:", e));
         } else if (
-          transcript.includes("おやつ食べますか")
+          transcript.includes("おやつたべますか")
         ) {
           audio3.play().catch(e => console.error("再生エラー:", e));
         } else if (
-          transcript.includes("お散歩行きますか") ||
-          transcript.includes("お散歩行こうか") ||
-          transcript.includes("お散歩") ||
-          transcript.includes("散歩行きますか") ||
-          transcript.includes("散歩行く")
+          transcript.includes("おさんぽいきますか") ||
+          transcript.includes("おさんぽいこうか") ||
+          transcript.includes("おさんぽ") ||
+          transcript.includes("さんぽいきますか") ||
+          transcript.includes("おさんぽいく")
         ) {
           audio4.play().catch(e => console.error("再生エラー:", e));
         }
@@ -174,16 +140,17 @@
       }, 5000);
 
       btn.addEventListener("click", () => {
-        audio1.play().then(() => {
+        audio1.play().catch(e => {
+          console.warn("音声再生に失敗:", e);
+        }).finally(() => {
           audio1.pause();
+          audio1.currentTime = 0;
           recognition.start();
           isListening = true;
           btn.classList.add("hidden");
           msg.classList.add("hidden");
           log.innerText = "音声認識を開始しました。";
           console.log("音声認識開始");
-        }).catch((e) => {
-          alert("音声再生の許可が得られませんでした。もう一度ボタンを押してください。");
         });
       });
     }
