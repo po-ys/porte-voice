@@ -132,23 +132,23 @@
           transcript.includes("ぽおちゃん") ||
           transcript.includes("ぽーちやん") ||
           (transcript.includes("ぽ") && transcript.includes("ちゃん")) ||
-          transcript.includes("おみずのんだの")
+          transcript.includes("お水飲んだの")
         ) {
           audio1.play().catch(e => console.error("再生エラー:", e));
         } else if (
-          transcript.includes("ごはんたべますか")
+          transcript.includes("ご飯たべますか")
         ) {
           audio2.play().catch(e => console.error("再生エラー:", e));
         } else if (
-          transcript.includes("おやつたべますか")
+          transcript.includes("おやつ食べますか")
         ) {
           audio3.play().catch(e => console.error("再生エラー:", e));
         } else if (
-          transcript.includes("おさんぽいきますか") ||
-          transcript.includes("おさんぽいこうか") ||
-          transcript.includes("おさんぽ") ||
-          transcript.includes("さんぽいきますか") ||
-          transcript.includes("おさんぽいく")
+          transcript.includes("お散歩行きますか") ||
+          transcript.includes("お散歩行こうか") ||
+          transcript.includes("お散歩") ||
+          transcript.includes("散歩行きますか") ||
+          transcript.includes("散歩行く")
         ) {
           audio4.play().catch(e => console.error("再生エラー:", e));
         }
