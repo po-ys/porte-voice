@@ -100,14 +100,17 @@
           (transcript.includes("ぽ") && transcript.includes("ちゃん")) ||
           transcript.includes("おみずのんだの")
         ) {
+          console.log("マッチ: audio1（ぽるて系）");
           audio1.play().catch(e => console.error("再生エラー:", e));
         } else if (
           transcript.includes("ごはんたべますか")
         ) {
+          console.log("マッチ: audio2（ごはん）");
           audio2.play().catch(e => console.error("再生エラー:", e));
         } else if (
           transcript.includes("おやつたべますか")
         ) {
+          console.log("マッチ: audio3（おやつ）");
           audio3.play().catch(e => console.error("再生エラー:", e));
         } else if (
           transcript.includes("おさんぽいきますか") ||
@@ -116,7 +119,10 @@
           transcript.includes("さんぽいきますか") ||
           transcript.includes("おさんぽいく")
         ) {
+          console.log("マッチ: audio4（おさんぽ）");
           audio4.play().catch(e => console.error("再生エラー:", e));
+        } else {
+          console.log("マッチなし");
         }
       };
 
