@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ポルテ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body, html {
+      margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif;
+    }
+    #bg-video {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: -1;
+    }
+    .footer {
+      position: absolute; bottom: 5%; width: 100%; text-align: center;
+      color: white; text-shadow: 0 0 10px black;
+    }
+    button {
+      font-size: 1.2em; padding: 10px 20px;
+      border: none; border-radius: 10px;
+      background-color: rgba(0, 0, 0, 0.6);
+      color: white; cursor: pointer;
+    }
+    .hidden { display: none; }
+    p { margin-top: 10px; font-size: 0.9em; }
+    .header { display: none; }
+    #log {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.6); color: white;
+      padding: 5px 10px; font-size: 0.8em;
+      border-radius: 5px; max-width: 90%;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- muted を外しました -->
+  <video id="bg-video" src="porte01.mp4" playsinline></video>
+
+  <div class="footer">
+    <button id="start-btn">▶ スタート</button>
+    <p id="start-msg">※最初に1回だけボタンを押してください。</p>
+  </div>
+
+  <div id="log">音声認識待機中...</div>
+
+  <audio id="porte2-audio" src="porte2.mp3" preload="auto"></audio>
+  <audio id="porte3-audio" src="porte3.mp3" preload="auto"></audio>
+  <audio id="porte4-audio" src="porte4.mp3" preload="auto"></audio>
+
+  <script>
+    const btn = document.getElementById("start-btn");
+    const msg = document.getElementById("start-msg");
+    const log = document.getElementById("log");
+
+    const audio2 = document.getElementById("porte2-audio");
+    const audio3 = document.getElementById("porte3-audio");
+    const audio4 = document.getElementById("porte4-audio");
+
+    const bgVideo = document.getElementById("bg-video");
+
+    // 初期状態で動画を停止
+    bgVideo.addEventListener('loadeddata', () => {
+      bgVideo.pause();
+      bgVideo.currentTime = 0;
+    });
+
+    // 動画が終わったら巻き戻す
+    bgVideo.addEventListener("ended", () => {
+      console.log("ビデオ終了、巻き戻し");
+      bgVideo.pause();
+      bgVideo.currentTime = 0;
+    });
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("このブラウザは音声認識に対応していません。");
+    } else {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      let isListening = false;
+      let lastHeard = Date.now();
+
+      const keywords1 = [
+        "ぽるて", "ぽーちゃん", "ぽおちゃん", "ぽーちやん",
+        "こうちゃん", "父ちゃん", "ふぉるて", "フォルテ"
+      ];
+
+      function stopAllAudio() {
+        [audio2, audio3, audio4].forEach(audio => {
+          audio.pause();
+          audio.currentTime = 0;
+        });
+      }
+
+      recognition.onresult = (event) => {
+        const rawTranscript = event.results[event.results.length - 1][0].transcript.trim();
+        log.innerText = `認識：${rawTranscript}`;
+        console.log("元の認識文字列:", rawTranscript);
+        lastHeard = Date.now();
+
+        const normalizedTranscript = rawTranscript
+          .replace(/[ァ-ン]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60))
+          .replace(/\s/g, '')
+          .toLowerCase();
+
+        console.log("正規化済み:", normalizedTranscript);
+
+        const matchVideo = 
+          keywords1.some(word => normalizedTranscript.includes(word)) ||
+          keywords1.some(word => rawTranscript.includes(word)) ||
+          (normalizedTranscript.includes("ぽ") && normalizedTranscript.includes("ちゃん"));
+
+        if (matchVideo) {
+          console.log("マッチ: porte01.mp4（ぽるて系）");
+          stopAllAudio();
+          bgVideo.pause();
+          bgVideo.currentTime = 0;
+          bgVideo.play().catch(e => console.error("ビデオ再生エラー:", e));
+        } else if (normalizedTranscript.includes("ご飯食べますか") || rawTranscript.includes("ご飯食べますか")) {
+          console.log("マッチ: audio2（ご飯）");
+          stopAllAudio();
+          audio2.play().catch(e => console.error("再生エラー:", e));
+        } else if (normalizedTranscript.includes("おやつ食べますか") || rawTranscript.includes("おやつ食べますか")) {
+          console.log("マッチ: audio3（おやつ）");
+          stopAllAudio();
+          audio3.play().catch(e => console.error("再生エラー:", e));
+        } else if (
+          ["お散歩行きますか", "お散歩行こうか", "お散歩", "散歩行きますか", "お散歩行く"].some(
+            phrase => normalizedTranscript.includes(phrase) || rawTranscript.includes(phrase)
+          )
+        ) {
+          console.log("マッチ: audio4（お散歩）");
+          stopAllAudio();
+          audio4.play().catch(e => console.error("再生エラー:", e));
+        } else {
+          console.log("マッチなし");
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("認識エラー:", event.error);
+      };
+
+      recognition.onend = () => {
+        console.log("認識終了。再起動します...");
+        setTimeout(() => {
+          recognition.start();
+        }, 500);
+      };
+
+      setInterval(() => {
+        const now = Date.now();
+        if (isListening && now - lastHeard > 15000) {
+          console.log("無音状態が続いたため音声認識を再起動します");
+          recognition.stop();
+        }
+      }, 5000);
+
+      btn.addEventListener("click", () => {
+        bgVideo.muted = false; // ← 音声ON
+        recognition.start();
+        isListening = true;
+        btn.classList.add("hidden");
+        msg.classList.add("hidden");
+        log.innerText = "音声認識を開始しました。";
+        console.log("音声認識開始");
+      });
+    }
+  </script>
+</body>
+</html>
