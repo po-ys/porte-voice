@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/jpg" href="porte3.png" />
   <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#000000" />
 
   <style>
     body,
@@ -304,10 +304,22 @@
         p1Video.pause();
         p1Video.currentTime = 0;
       });
+
+      // Service Worker登録（PWA用）
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(registration => {
+              console.log('Service Worker 登録成功:', registration.scope);
+            })
+            .catch(error => {
+              console.error('Service Worker 登録失敗:', error);
+            });
+        });
+      }
     }
   </script>
 
 </body>
 
 </html>
-
