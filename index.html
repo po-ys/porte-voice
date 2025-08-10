@@ -83,7 +83,7 @@
 
 <body>
 
-  <!-- 動画（元コードのまま） -->
+  <!-- 動画 -->
   <video id="p1-video" src="p1.mp4" playsinline muted preload="auto"></video>
   <video id="p1rev-video" src="p1rev.mp4" playsinline muted preload="auto" style="display: none;"></video>
   <video id="p3-video" src="p3.mp4" playsinline muted preload="auto" style="display: none;"></video>
@@ -92,10 +92,9 @@
   <video id="p6-video" src="p6.mp4" playsinline muted preload="auto" style="display: none;"></video>
   <video id="p7-video" src="p7.mp4" playsinline muted preload="auto" style="display: none;"></video>
   <video id="p8-video" src="p8.mp4" playsinline muted preload="auto" style="display: none;"></video>
-  <!-- 新規追加 -->
   <video id="p9-video" src="p9.mp4" playsinline muted preload="auto" style="display: none;"></video>
 
-  <!-- UI（元コードのまま） -->
+  <!-- UI -->
   <div class="footer">
     <button id="start-btn">▶ スタート</button>
     <p id="start-msg">※最初に1回だけボタンを押してください。</p>
@@ -115,7 +114,6 @@
     const p6Video = document.getElementById("p6-video");
     const p7Video = document.getElementById("p7-video");
     const p8Video = document.getElementById("p8-video");
-    // 追加
     const p9Video = document.getElementById("p9-video");
 
     let p2Video = null;
@@ -136,62 +134,55 @@
       });
     }
 
-    // --- 変更点（最小）: Android向けの事前読み込み（p1rev, p3, p2）と安全再生ヘルパー ---
-    // （1）事前読み込み：既存要素はload()を呼ぶ。p2 は非表示のプレローダ要素で読み込む。
-    try {
-      // 呼べるものだけ load() しておく（Androidのバッファ不足対策）
-      [p1revVideo, p3Video].forEach(v => {
-        if (v && typeof v.load === 'function') {
-          try { v.load(); } catch (e) { /* ignore */ }
-        }
-      });
+    // 事前読み込み：p1Video, p1revVideo, p3Video もload()呼ぶ（スマホ安定化狙い）
+    [p1Video, p1revVideo, p3Video].forEach(v => {
+      if (v && typeof v.load === 'function') {
+        try { v.load(); } catch (e) { }
+      }
+    });
 
-      // p2は動的要素なので非表示プレローダで先読みしておく（DOMに追加するが表示はしない）
-      const _p2Preloader = document.createElement('video');
-      _p2Preloader.src = 'p2.mp4';
-      _p2Preloader.playsInline = true;
-      _p2Preloader.muted = true;
-      _p2Preloader.preload = 'auto';
-      _p2Preloader.style.display = 'none';
-      document.body.appendChild(_p2Preloader);
-      try { _p2Preloader.load(); } catch (e) { /* ignore */ }
+    // p2は動的生成なので非表示のプレローダで事前読み込み
+    try {
+      const p2Preloader = document.createElement('video');
+      p2Preloader.src = 'p2.mp4';
+      p2Preloader.playsInline = true;
+      p2Preloader.muted = true;
+      p2Preloader.preload = 'auto';
+      p2Preloader.style.display = 'none';
+      document.body.appendChild(p2Preloader);
+      try { p2Preloader.load(); } catch (e) { }
     } catch (e) {
       console.warn("preload error:", e);
     }
 
-    // （2）安全再生ヘルパー: src属性がすでに目的と一致する場合は src を書き換えずに currentTime=0→play()
-    function safeShowAndPlay(videoEl, filename /* optional */, options = {}) {
-      // options: { unmute: true/false/null } - null = leave as-is, true = unmute, false = mute
+    function safeShowAndPlay(videoEl, filename, options = {}) {
       try {
-        const attrSrc = (videoEl && videoEl.getAttribute) ? videoEl.getAttribute('src') : null;
-        if (filename && attrSrc !== filename) {
-          // only set src when attribute differs (prevents unnecessary src change -> 暗転)
+        const currentSrc = (videoEl && videoEl.getAttribute) ? videoEl.getAttribute('src') : null;
+        if (filename && currentSrc !== filename) {
           videoEl.setAttribute('src', filename);
           videoEl.src = filename;
-          // load to hint browser to buffer new source
-          try { videoEl.load(); } catch (e) { /* ignore */ }
+          videoEl.preload = "auto"; // preload明示
+          try { videoEl.load(); } catch (e) { }
         }
         videoEl.style.display = "block";
         if (options.unmute === true) videoEl.muted = false;
         if (options.unmute === false) videoEl.muted = true;
         videoEl.currentTime = 0;
-        const p = videoEl.play();
-        if (p && p.catch) p.catch(e => console.error((filename || videoEl.id) + " 再生エラー:", e));
+        const playPromise = videoEl.play();
+        if (playPromise && playPromise.catch) playPromise.catch(e => console.error(filename + " 再生エラー:", e));
       } catch (e) {
         console.error("safeShowAndPlay error:", e);
       }
     }
-    // --- ここまで変更点 ---
 
     function createAndPlayP2Video() {
       if (!p2Video) {
         p2Video = document.createElement("video");
         p2Video.id = "p2-video";
-        // setAttribute instead of only property to make getAttribute checks consistent
         p2Video.setAttribute('src', "p2.mp4");
         p2Video.src = "p2.mp4";
         p2Video.playsInline = true;
-        p2Video.muted = true; // will unmute after play() resolves, same as元コード
+        p2Video.muted = true;
         p2Video.preload = "auto";
         p2Video.style.position = "fixed";
         p2Video.style.top = "50%";
@@ -203,20 +194,15 @@
         p2Video.style.zIndex = "0";
         p2Video.style.display = "none";
         document.body.appendChild(p2Video);
-        // Attempt to load to reduce chance of buffering on Android
-        try { p2Video.load(); } catch (e) { /* ignore */ }
+        try { p2Video.load(); } catch (e) { }
       }
       stopAllVideos();
-      // Use safe playback logic: avoid reassigning src if already set to p2.mp4 (prevents暗転)
       safeShowAndPlay(p2Video, "p2.mp4", { unmute: null });
-      // Unmute after play() resolves (keep same behavior as元コード)
-      // Note: keep the original pattern: try to unmute after started
       (async () => {
         try {
           await p2Video.play();
           p2Video.muted = false;
         } catch (e) {
-          // 再生開始できなかった場合はログだけ出す（元コードと同様の扱い）
           console.error("p2 再生エラー:", e);
         }
       })();
@@ -237,7 +223,7 @@
       const replyKeywords = /(返事|へんじ|お返事|おへんじ)/i;
       const secondReplyKeywords = /(もう一回|もういっかい|もう1回)/i;
       const kawaiiKeywords = /(かわいい|可愛い)/i;
-      const sugoiKeywords = /(すごい|凄い)/i; // 追加済み（元で合意した変更）
+      const sugoiKeywords = /(すごい|凄い)/i;
       const rikouKeywords = /(りこう|利口)/i;
       const sanpoKeywords = /(さんぽ|散歩)/i;
       const oyatsuKeywords = /(おやつ)/i;
@@ -261,7 +247,6 @@
             (normalizedTranscript.includes("ぽ") && normalizedTranscript.includes("ちゃん"))) {
             console.log("p1rev中にぽるてキーワード検出 → p1.mp4再生しplayedP1=trueに");
             stopAllVideos();
-            // safe play (p1 is muted in markup; preserve as-is)
             safeShowAndPlay(p1Video, "p1.mp4", { unmute: null });
             playedP1 = true;
             playingP1rev = false;
@@ -284,12 +269,10 @@
           if (keywords1.test(rawTranscript) || keywords1.test(normalizedTranscript) ||
             (normalizedTranscript.includes("ぽ") && normalizedTranscript.includes("ちゃん"))) {
             stopAllVideos();
-            // p3 should be unmuted when played in this branch (match 元コード)
             safeShowAndPlay(p3Video, "p3.mp4", { unmute: true });
             return;
           }
 
-          // ここで追加キーワード「おて・お手」判定
           if (oteKeywords.test(rawTranscript) || oteKeywords.test(normalizedTranscript)) {
             console.log("おてキーワード → p9.mp4");
             stopAllVideos();
@@ -300,7 +283,6 @@
           if (byeKeywords.test(rawTranscript) || byeKeywords.test(normalizedTranscript)) {
             console.log("またね/おやすみ → p1rev.mp4 再生");
             stopAllVideos();
-            // p1rev should be unmuted when played (元コード did p1revVideo.muted=false)
             safeShowAndPlay(p1revVideo, "p1rev.mp4", { unmute: true });
             playingP1rev = true;
             return;
@@ -319,7 +301,6 @@
             return;
           }
 
-          // かわいい・すごい・りこう・たのしい → p4.mp4 （元合意どおり）
           if (kawaiiKeywords.test(rawTranscript) || kawaiiKeywords.test(normalizedTranscript) ||
             sugoiKeywords.test(rawTranscript) || sugoiKeywords.test(normalizedTranscript) ||
             rikouKeywords.test(rawTranscript) || rikouKeywords.test(normalizedTranscript) ||
@@ -342,8 +323,6 @@
           }
 
           if (tanoshiiKeywords.test(rawTranscript) || tanoshiiKeywords.test(normalizedTranscript)) {
-            // NOTE: 元合意でたのしい→p4.mp4 にしているため、この行 is effectively unreachable,
-            // because tanoshii was handled above in the combined check. Kept for parity with元コード structure.
             stopAllVideos();
             safeShowAndPlay(p8Video, "p8.mp4", { unmute: null });
             return;
