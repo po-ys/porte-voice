@@ -1,0 +1,257 @@
+<!DOCTYPE html> 
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>音声認識動画制御</title>
+<style>
+  body,html { margin:0; padding:0; height:100%; background:black; }
+  #videoBackground {
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    object-fit: contain; pointer-events:none;
+  }
+  #startButton {
+    position: fixed; top:50%; left:50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.2em; padding:10px 20px;
+    border:none; border-radius:10px;
+    background: rgba(0,0,0,0.6); color:white; cursor:pointer; z-index:10;
+  }
+  #log {
+    position: fixed; top:5px; left:5px;
+    color: white; font-family: monospace; font-size: 0.9em;
+    line-height: 1.2em; width: 300px; z-index: 20;
+  }
+</style>
+</head>
+<body>
+
+<video id="videoBackground" src="p1.mp4" preload="auto" muted></video>
+<button id="startButton">スタート</button>
+<div id="log"></div>
+
+<script>
+  const video = document.getElementById('videoBackground');
+  const startButton = document.getElementById('startButton');
+  const logDiv = document.getElementById('log');
+
+  const logs = [];
+  function addLog(text) {
+    logs.push(text);
+    if (logs.length > 2) logs.shift();
+    logDiv.innerHTML = logs.join('<br>');
+  }
+
+  // キーワード正規表現群と対応動画
+  const keywordMap = [
+    { regex: /(返事|へんじ|お返事|おへんじ)/i, video: 'p3.mp4' },
+    { regex: /(もう一回|もういっかい|もう1回)/i, video: 'p2.mp4' },
+    { regex: /(中|ちゅう|チュウ|ちゅー|チュー)/i, video: 'p5.mp4' },
+    { regex: /(かわいい|可愛い|すごい|凄い|りこう|利口|たのしい|楽しい)/i, video: 'p4.mp4' },
+    { regex: /(さんぽ|散歩)/i, video: 'p7.mp4' },
+    { regex: /(おやつ)/i, video: 'p6.mp4' },
+    { regex: /(またね|おやすみ)/i, video: 'p1rev.mp4' },
+    { regex: /(おて|お手|大手|元気|げんき|ゲンキ)/i, video: 'p9.mp4' },
+  ];
+
+  // ポルテ系キーワード（p1と10ループの切り分け用）
+  const porteRegex = /(ぽるて|ぽーちゃん|ぽおちゃん|ぽーちやん|こうちゃん|父ちゃん|ふぉるて|フォルテ|来れて|これて|取れて|とれて|降りて|おりて)/i;
+
+  // キーワード判定のための簡易カタカナ→ひらがな変換
+  function normalizeKana(str) {
+    return str
+      .replace(/ポ/g, 'ぽ')
+      .replace(/ル/g, 'る')
+      .replace(/テ/g, 'て')
+      .replace(/ー/g, '')
+      .replace(/フォ/g, 'ふぉ')
+      .replace(/ル/g, 'る')
+      .replace(/テ/g, 'て')
+      .toLowerCase();
+  }
+
+  // 音声あり動画リスト
+  const audioVideos = ['p2.mp4', 'p3.mp4'];
+
+  let recognition;
+  if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+  } else if ('SpeechRecognition' in window) {
+    recognition = new SpeechRecognition();
+  } else {
+    addLog('音声認識はサポートされていません');
+  }
+
+  let currentVideo = 'p1';  // 'p1', '10', or 動画ファイル名
+  let isPlayingSpecialVideo = false;  // p1,10以外の動画再生中判定
+  let waitingForPorteKeyword = false; // p1rev後の特定キーワード待機モード
+
+  if (recognition) {
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'ja-JP';
+
+    recognition.onresult = event => {
+      for(let i = event.resultIndex; i < event.results.length; i++) {
+        if(event.results[i].isFinal) {
+          const transcriptRaw = event.results[i][0].transcript.trim();
+          addLog('認識結果: ' + transcriptRaw);
+
+          const transcript = normalizeKana(transcriptRaw);
+
+          // p1rev後特定キーワード待機モード
+          if(waitingForPorteKeyword) {
+            if(porteRegex.test(transcript)) {
+              addLog('特定キーワード検出 → p1.mp4再生開始');
+              waitingForPorteKeyword = false;
+              isPlayingSpecialVideo = true;
+              currentVideo = 'p1.mp4';
+              video.loop = false;
+              video.src = 'p1.mp4';
+              video.currentTime = 0;
+              video.muted = true;
+              video.play().catch(e => addLog('動画再生エラー: ' + e.message));
+            } else {
+              addLog('特定キーワード待機中 キーワード検出せず');
+            }
+            return; // 他の処理はしない
+          }
+
+          // p1再生中の処理
+          if(currentVideo === 'p1') {
+            if(isPlayingSpecialVideo) {
+              addLog('動画再生中なので無視');
+              continue;
+            }
+            if(porteRegex.test(transcript)) {
+              addLog('p1再生中 ポルテ系キーワード検出 → p1再生');
+              isPlayingSpecialVideo = true;
+              recognition.stop();
+              video.loop = false;
+              video.src = 'p1.mp4';
+              video.currentTime = 0;
+              video.muted = true;
+              video.play().catch(e => addLog('動画再生エラー: ' + e.message));
+            } else {
+              addLog('p1再生中 他キーワード無視');
+            }
+            continue;
+          }
+
+          // 10ループ中の処理
+          if(currentVideo === '10' && !isPlayingSpecialVideo) {
+            if(porteRegex.test(transcript)) {
+              addLog('10ループ中 ポルテ系キーワード検出 → p3再生');
+              isPlayingSpecialVideo = true;
+              currentVideo = 'p3.mp4';
+              recognition.stop();
+              video.loop = false;
+              video.src = 'p3.mp4';
+              video.currentTime = 0;
+              video.muted = false; // 音声あり
+              video.play().catch(e => addLog('動画再生エラー: ' + e.message));
+              continue;
+            }
+            // それ以外のキーワード判定
+            let matchedVideo = null;
+            for(const km of keywordMap) {
+              if(km.regex.test(transcript)) {
+                matchedVideo = km.video;
+                break;
+              }
+            }
+            if(matchedVideo) {
+              addLog(`10.mp4ループ中 キーワード検出。${matchedVideo}再生開始`);
+              isPlayingSpecialVideo = true;
+              currentVideo = matchedVideo;
+              recognition.stop();
+              video.loop = false;
+              video.src = matchedVideo;
+              video.currentTime = 0;
+              video.muted = audioVideos.includes(matchedVideo) ? false : true;
+              video.play().catch(e => addLog('動画再生エラー: ' + e.message));
+            } else {
+              addLog('特定キーワード無し 無視');
+            }
+          }
+        }
+      }
+    };
+
+    recognition.onerror = e => addLog('認識エラー: ' + e.error);
+
+    recognition.onend = () => {
+      if(!isPlayingSpecialVideo) {
+        addLog('認識終了、再開します');
+        try {
+          recognition.start();
+        } catch(e) {
+          addLog('認識再開失敗: ' + e.message);
+        }
+      } else {
+        addLog('特別動画再生中は認識停止中');
+      }
+    };
+  }
+
+  video.addEventListener('ended', () => {
+    if(isPlayingSpecialVideo) {
+      if(currentVideo === 'p1rev.mp4') {
+        addLog('p1rev.mp4終了。10.mp4ループ再生はせず、特定キーワード待機へ');
+        isPlayingSpecialVideo = false;
+        waitingForPorteKeyword = true;
+        currentVideo = '';
+        video.loop = false;
+        video.pause();
+
+        try {
+          recognition.start();
+          addLog('p1rev後の特定キーワード待機モード 音声認識再開');
+        } catch(e) {
+          addLog('認識再開失敗: ' + e.message);
+        }
+      } else {
+        addLog(`特別動画(${currentVideo})終了。10.mp4ループ再生再開`);
+        currentVideo = '10';
+        isPlayingSpecialVideo = false;
+        video.loop = true;
+        video.src = '10.mp4';
+        video.currentTime = 0;
+        video.muted = true; // ループはミュート
+        video.play().catch(e => addLog('動画再生エラー: ' + e.message));
+        try {
+          recognition.start();
+        } catch(e) {
+          addLog('認識再開失敗: ' + e.message);
+        }
+      }
+    } else if(currentVideo === 'p1') {
+      addLog('p1.mp4終了。10.mp4ループ再生開始');
+      currentVideo = '10';
+      video.loop = true;
+      video.src = '10.mp4';
+      video.currentTime = 0;
+      video.muted = true; // ループはミュート
+      video.play().catch(e => addLog('動画再生エラー: ' + e.message));
+    }
+  });
+
+  // 初期状態：p1.mp4停止で静止、ミュート
+  video.pause();
+  video.currentTime = 0;
+  video.muted = true;
+
+  startButton.addEventListener('click', () => {
+    startButton.style.display = 'none';
+
+    try {
+      recognition.start();
+      addLog('音声認識開始');
+    } catch(e) {
+      addLog('音声認識開始失敗: ' + e.message);
+    }
+  });
+</script>
+
+</body>
+</html>
