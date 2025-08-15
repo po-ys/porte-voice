@@ -196,7 +196,7 @@ else{
   const tanoshiiKeywords = /(たのしい|楽しい)/i;
   const byeKeywords = /(またね|おやすみ)/i;
   const oteKeywords = /(おて|お手|大手)/i;
-  const chuKeywords = /(ちゅう|ちゅー|チュー|チュ)/i;
+  const chuKeywords = /(ちゅう|ちゅー|チュー|チュ|注)/i;
 
   recognition.onresult = async (event)=>{
     const rawTranscript = event.results[event.results.length-1][0].transcript.trim();
@@ -292,3 +292,4 @@ else{
 
 </body>
 </html>
+
