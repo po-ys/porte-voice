@@ -11,7 +11,7 @@
 <style>
 body, html { margin:0; padding:0; height:100%; overflow:hidden; font-family:sans-serif; background-color:black; }
 video { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width:100vw; max-height:100vh; object-fit: contain; z-index:0; background-color:black; display:none; }
-.footer { position:absolute; bottom:5%; width:100%; text-align:center; color:white; text-shadow:0 0 10px black; z-index:10; }
+.footer { position:absolute; top:10%; width:100%; text-align:center; color:white; text-shadow:0 0 10px black; z-index:10; }
 button { font-size:1.2em; padding:10px 20px; border:none; border-radius:10px; background-color: rgba(0,0,0,0.6); color:white; cursor:pointer; min-width:140px; min-height:44px; }
 .hidden { display:none; }
 p { margin-top:10px; font-size:0.9em; line-height:1.4em; }
@@ -41,8 +41,8 @@ p { margin-top:10px; font-size:0.9em; line-height:1.4em; }
 <video id="p12-video"  src="p12.mp4"  playsinline muted preload="metadata"></video>
 
 <div class="footer">
-  <button id="start-btn">▶ スタート</button>
-  <p id="start-msg">※押してね</p>
+  <button id="start-btn">▶ ポルテを起こして</button>
+  <!-- <p id="start-msg">※押してね</p> -->
 </div>
 <div id="log">音声認識待機中...
 現在再生: 静止画</div>
@@ -283,3 +283,4 @@ if('serviceWorker' in navigator){
 
 </body>
 </html>
+
