@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>ポルテ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/jpg" href="porte3.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: sans-serif;
+      background-color: black;
+    }
+
+    video {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100vw;
+      max-height: 100vh;
+      object-fit: contain;
+      z-index: 0;
+      background-color: black;
+      display: none;
+    }
+
+    .footer {
+      position: absolute;
+      top: 10%;
+      width: 100%;
+      text-align: center;
+      color: white;
+      text-shadow: 0 0 10px black;
+      z-index: 10;
+    }
+
+    button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background-color: rgba(0, 0, 0, 0.6);
+      color: white;
+      cursor: pointer;
+      min-width: 140px;
+      min-height: 44px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    p {
+      margin-top: 10px;
+      font-size: 0.9em;
+      line-height: 1.4em;
+    }
+
+    #log {
+      display: block;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 5px 10px;
+      font-size: 0.8em;
+      border-radius: 5px;
+      max-width: 90%;
+      word-break: break-word;
+      z-index: 10;
+      white-space: pre-line;
+    }
+
+    #static-image {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100vw;
+      max-height: 100vh;
+      z-index: 0;
+      display: block;
+    }
+
+    #p2-image {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100vw;
+      max-height: 100vh;
+      z-index: 2;
+      display: none;
+      pointer-events: none;
+    }
+
+    #p4-image {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100vw;
+      max-height: 100vh;
+      z-index: 2;
+      display: none;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <img id="static-image" src="porte1.png" alt="静止画">
+  <img id="p2-image" src="porte2.png" alt="無効ワード" />
+  <img id="p4-image" src="porte4.png" alt="porte4" />
+
+  <video id="p1-video" src="p1.mp4" playsinline muted preload="metadata"></video>
+  <video id="p1rev-video" src="p1rev.mp4" playsinline muted preload="metadata"></video>
+  <video id="p2-video" src="p2.mp4" playsinline muted preload="metadata"></video>
+  <video id="p3-video" src="p3.mp4" playsinline muted preload="metadata"></video>
+  <video id="p4-video" src="p4.mp4" playsinline muted preload="metadata"></video>
+  <video id="p5-video" src="p5.mp4" playsinline muted preload="metadata"></video>
+  <video id="p6-video" src="p6.mp4" playsinline muted preload="metadata"></video>
+  <video id="p7-video" src="p7.mp4" playsinline muted preload="metadata"></video>
+  <video id="p8-video" src="p8.mp4" playsinline muted preload="metadata"></video>
+  <video id="p9-video" src="p9.mp4" playsinline muted preload="metadata"></video>
+  <video id="p10-video" src="p10.mp4" playsinline muted preload="metadata" loop></video>
+  <video id="p11-video" src="p11.mp4" playsinline muted preload="metadata"></video>
+  <video id="p12-video" src="p12.mp4" playsinline muted preload="metadata"></video>
+
+  <div class="footer">
+    <button id="start-btn">▶ ポルテをおこして</button>
+  </div>
+  <div id="log">音声認識待機中...
+    現在再生: 静止画</div>
+
+  <script>
+    const btn = document.getElementById("start-btn");
+    const msg = document.getElementById("start-msg");
+    const log = document.getElementById("log");
+    const staticImg = document.getElementById("static-image");
+    const p2Img = document.getElementById("p2-image");
+    const p4Img = document.getElementById("p4-image");
+
+    const videos = {
+      p1: document.getElementById("p1-video"),
+      p1rev: document.getElementById("p1rev-video"),
+      p2: document.getElementById("p2-video"),
+      p3: document.getElementById("p3-video"),
+      p4: document.getElementById("p4-video"),
+      p5: document.getElementById("p5-video"),
+      p6: document.getElementById("p6-video"),
+      p7: document.getElementById("p7-video"),
+      p8: document.getElementById("p8-video"),
+      p9: document.getElementById("p9-video"),
+      p10: document.getElementById("p10-video"),
+      p11: document.getElementById("p11-video"),
+      p12: document.getElementById("p12-video")
+    };
+
+    let isListening = false;
+    let playedP1 = false;
+    let waitingKeywords = true;
+    let playingP1rev = false;
+    let recognition = null;
+    let recognitionRetryInterval = null;
+    let logLines = ["音声認識待機中...", "現在再生: 静止画"];
+
+    function updateLog(newLine) {
+      logLines.unshift(newLine);
+      if (logLines.length > 2) logLines.pop();
+      log.textContent = logLines.join("\n");
+    }
+
+    async function switchVideo(newVideo, triggeredBy = null) {
+      try {
+        staticImg.style.display = "none";
+        p2Img.style.display = "none";
+        p4Img.style.display = "none";
+        newVideo.style.display = "block";
+
+        if (newVideo.id === "p2-video" || newVideo.id === "p3-video") {
+          newVideo.muted = false;
+          newVideo.volume = 1.0;
+        } else {
+          newVideo.muted = true;
+          newVideo.volume = 0;
+        }
+
+        newVideo.currentTime = 0;
+        await newVideo.play().catch(() => { });
+
+        Object.values(videos).forEach(v => {
+          if (v !== newVideo) {
+            v.pause();
+            v.style.display = "none";
+            v.currentTime = 0;
+            v.muted = true;
+            v.volume = 0;
+          }
+        });
+
+        playingP1rev = (newVideo.id === "p1rev-video");
+
+        const name = newVideo.src.split("/").pop();
+        if (triggeredBy) updateLog(`現在再生: ${name} → 認識キーワード: ${triggeredBy}`);
+        else updateLog(`現在再生: ${name}`);
+      } catch (e) { console.error("switchVideo error:", e); }
+    }
+
+    function setupEndListeners() {
+      ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p11', 'p12'].forEach(key => {
+        videos[key].addEventListener('ended', () => { switchVideo(videos.p10); });
+      });
+      videos.p1rev.addEventListener('ended', () => {
+        staticImg.style.display = "block";
+        waitingKeywords = true;
+        playingP1rev = false;
+      });
+    }
+    setupEndListeners();
+
+    function initRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) { alert("このブラウザは音声認識に対応していません。"); return; }
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      const keywords1 = /(ぽるて|ポルテ|ぽーちゃん|ぽおちゃん|ぽうちゃん|ポーちゃん|おーちゃん|フォーちゃん|こうちゃん|父ちゃん|ふぉるて|フォルテ|来れて|これて|取れて|とれて|降りて|おりて|ポチャン|ぽちゃん)/i;
+      const replyKeywords = /(返事|へんじ|お返事|おへんじ)/i;
+      const secondReplyKeywords = /(もう一回|もういっかい|もう1回)/i;
+      const kawaiiKeywords = /(かわいい|可愛い)/i;
+      const sugoiKeywords = /(すごい|凄い)/i;
+      const rikouKeywords = /(りこう|利口|お利口|おりこう)/i;
+      const sanpoKeywords = /(さんぽ|散歩|お散歩|おさんぽ)/i;
+      const oyatsuKeywords = /(おやつ)/i;
+      const tanoshiiKeywords = /(たのしい|楽しい|楽しかったね)/i;
+      const byeKeywords = /(またね|おやすみ)/i;
+      const oteKeywords = /(おて|お手|大手|おては|お手は|大手は)/i;
+      const chuKeywords = /(ちゅう|ちゅー|チュー|チュ|注|中|おはよう|おはよー)/i;
+      const iineKeywords = /(いいね|イイネー|いいねー|いいねえ|イイねえ|イイね)/i;
+      const genkiKeywords = /(元気|げんき|ゲンキ)/i;
+      const gomenKeywords = /(ごめん|ゴメン|ごめんよ|ゴメンよ)/i;
+      const sukiKeywords = /(好き|すき|スキ)/i;
+      const arigatoKeywords = /(ありがとう|ありがと)/i;
+      const dekakeKeywords = /(でかけ|出かけ|おでかけ|お出かけ)/i;
+      const doushimasuKeywords = /(どうしますか|どおしますか|どーしますか)/i;
+      const iiKeywords = /(いいでしょ|いいでしょう|いいで)/i;
+
+      /* ★ 今回お前が追加しろと言った 4 種のキーワード */
+      const douzoKeywords = /(どうぞ|食べて|たべて)/i;
+      const choudaiKeywords = /(ちょうだい|頂戴)/i;
+      const kamatteKeywords = /(かまって|構って|あそんで|遊んで)/i;
+      const ikunoKeywords = /(いくの|行くの|たべるの|食べるの|食べんの|たべんの)/i;
+
+      function isTrivialUtterance(text, confidence) {
+        const t = (text || "").trim();
+        if (!t) return true;
+        if (t.replace(/[ \u3000]/g, '').length < 2) return true;
+        if (typeof confidence === 'number' && confidence < 0.2) return true;
+        return false;
+      }
+
+      recognition.onresult = async (event) => {
+        const res = event.results[event.results.length - 1][0];
+        const rawTranscript = (res.transcript || "").trim();
+        const conf = typeof res.confidence === 'number' ? res.confidence : 1;
+        if (isTrivialUtterance(rawTranscript, conf)) return;
+
+        const normalizedTranscript = rawTranscript
+          .replace(/ー/g, '')
+          .replace(/[ァ-ン]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60))
+          .replace(/\s/g, '')
+          .toLowerCase();
+
+        updateLog("認識結果: " + rawTranscript);
+
+        let matched = false;
+        const isP10Visible = (videos.p10.style.display === 'block');
+
+        if (waitingKeywords) {
+          if (keywords1.test(rawTranscript) || keywords1.test(normalizedTranscript)) {
+            await switchVideo(videos.p1, rawTranscript);
+            waitingKeywords = false;
+            playedP1 = true;
+            matched = true;
+          }
+        } else {
+
+          if (keywords1.test(rawTranscript) || keywords1.test(normalizedTranscript)) { await switchVideo(videos.p3, rawTranscript); matched = true; }
+          else if (oteKeywords.test(rawTranscript) || oteKeywords.test(normalizedTranscript)) { await switchVideo(videos.p9, rawTranscript); matched = true; }
+          else if (byeKeywords.test(rawTranscript) || byeKeywords.test(normalizedTranscript)) { await switchVideo(videos.p1rev, rawTranscript); playingP1rev = true; matched = true; }
+          else if (replyKeywords.test(rawTranscript) || replyKeywords.test(normalizedTranscript)) { await switchVideo(videos.p3, rawTranscript); matched = true; }
+          else if (secondReplyKeywords.test(rawTranscript) || secondReplyKeywords.test(normalizedTranscript)) { await switchVideo(videos.p2, rawTranscript); matched = true; }
+
+          else if (kawaiiKeywords.test(rawTranscript) || kawaiiKeywords.test(normalizedTranscript) ||
+            sugoiKeywords.test(rawTranscript) || sugoiKeywords.test(normalizedTranscript) ||
+            rikouKeywords.test(rawTranscript) || rikouKeywords.test(normalizedTranscript)) { await switchVideo(videos.p4, rawTranscript); matched = true; }
+
+          else if (sanpoKeywords.test(rawTranscript) || sanpoKeywords.test(normalizedTranscript) ||
+            oyatsuKeywords.test(rawTranscript) || oyatsuKeywords.test(normalizedTranscript)) { await switchVideo(videos.p12, rawTranscript); matched = true; }
+
+          else if (tanoshiiKeywords.test(rawTranscript) || tanoshiiKeywords.test(normalizedTranscript)) { await switchVideo(videos.p4, rawTranscript); matched = true; }
+
+          else if (chuKeywords.test(rawTranscript) || chuKeywords.test(normalizedTranscript)) { await switchVideo(videos.p5, rawTranscript); matched = true; }
+
+          else if (dekakeKeywords.test(rawTranscript) || dekakeKeywords.test(normalizedTranscript)) { await switchVideo(videos.p12, rawTranscript); matched = true; }
+
+          else if (iiKeywords.test(rawTranscript) || iiKeywords.test(normalizedTranscript)) { await switchVideo(videos.p4, rawTranscript); matched = true; }
+
+          else if (doushimasuKeywords.test(rawTranscript) || doushimasuKeywords.test(normalizedTranscript)) {
+            p4Img.style.display = "block";
+            updateLog(`認識結果: ${rawTranscript} → porte4.png表示`);
+            setTimeout(() => {
+              p4Img.style.display = "none";
+              switchVideo(videos.p10);
+            }, 1200);
+            matched = true;
+          }
+
+          else if (iineKeywords.test(rawTranscript) || iineKeywords.test(normalizedTranscript) ||
+            genkiKeywords.test(rawTranscript) || genkiKeywords.test(normalizedTranscript) ||
+            gomenKeywords.test(rawTranscript) || gomenKeywords.test(normalizedTranscript) ||
+            sukiKeywords.test(rawTranscript) || sukiKeywords.test(normalizedTranscript) ||
+            arigatoKeywords.test(rawTranscript) || arigatoKeywords.test(normalizedTranscript)) { await switchVideo(videos.p4, rawTranscript); matched = true; }
+
+          /* ーーーーー★ここから お前の追加４つ ーーーーー */
+
+          else if (douzoKeywords.test(rawTranscript) || douzoKeywords.test(normalizedTranscript)) {
+            await switchVideo(videos.p7, rawTranscript);
+            matched = true;
+          }
+
+          else if (choudaiKeywords.test(rawTranscript) || choudaiKeywords.test(normalizedTranscript)) {
+            await switchVideo(videos.p8, rawTranscript);
+            matched = true;
+          }
+
+          else if (kamatteKeywords.test(rawTranscript) || kamatteKeywords.test(normalizedTranscript)) {
+            await switchVideo(videos.p6, rawTranscript);
+            matched = true;
+          }
+
+          else if (ikunoKeywords.test(rawTranscript) || ikunoKeywords.test(normalizedTranscript)) {
+            await switchVideo(videos.p11, rawTranscript);
+            matched = true;
+          }
+
+          /* ーーーーー★ここまで ーーーーー */
+
+          if (!matched && isP10Visible) {
+            p2Img.style.display = "block";
+            updateLog(`認識結果: ${rawTranscript} → 無効ワード（porte2.png表示）`);
+            setTimeout(() => { p2Img.style.display = "none"; }, 1200);
+            matched = true;
+          }
+        }
+
+        if (!matched) updateLog("認識結果: " + rawTranscript + " → 無視");
+      };
+
+      recognition.onerror = (event) => { updateLog("認識エラー: " + event.error); };
+      recognition.onend = () => { if (isListening) setTimeout(() => recognition.start(), 500); };
+    }
+    initRecognition();
+
+    function startRecognitionRetry() {
+      if (!recognition) return;
+      recognition.start();
+      if (recognitionRetryInterval) clearInterval(recognitionRetryInterval);
+      recognitionRetryInterval = setInterval(() => {
+        if (isListening && videos.p10.style.display === "block") {
+          try { recognition.start(); } catch (e) { }
+        }
+      }, 1500);
+    }
+
+    btn.addEventListener("click", () => {
+      if (!recognition) return;
+      try { recognition.start(); } catch (e) { }
+      isListening = true;
+      playedP1 = false;
+      waitingKeywords = true;
+      playingP1rev = false;
+      btn.classList.add("hidden");
+      msg?.classList.add("hidden");
+      updateLog("音声認識開始");
+      startRecognitionRetry();
+    });
+
+    document.addEventListener('dblclick', () => {
+      const elem = document.documentElement;
+      if (!document.fullscreenElement) elem.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker 登録成功:', reg.scope))
+          .catch(e => console.error('Service Worker 登録失敗:', e));
+      });
+    }
+  </script>
+
+</body>
+
+</html>
