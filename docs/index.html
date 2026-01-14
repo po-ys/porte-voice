@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>ポルテ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/jpg" href="porte3.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+
+  <style>
+    body, html {
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: sans-serif; background-color: black;
+    }
+
+    /* プレイヤーは1つだけに集約 */
+    #main-video {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100vw; max-height: 100vh;
+      object-fit: contain; z-index: 0;
+      background-color: black; display: none;
+    }
+
+    .footer {
+      position: absolute; top: 10%; width: 100%;
+      text-align: center; color: white; text-shadow: 0 0 10px black; z-index: 10;
+    }
+
+    button {
+      font-size: 1.2em; padding: 10px 20px; border: none; border-radius: 10px;
+      background-color: rgba(0, 0, 0, 0.6); color: white; cursor: pointer;
+      min-width: 140px; min-height: 44px;
+    }
+
+    .hidden { display: none; }
+
+    #static-image, #p2-image, #p4-image {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100vw; max-height: 100vh; z-index: 0;
+    }
+
+    #p2-image, #p4-image { z-index: 2; display: none; pointer-events: none; }
+  </style>
+</head>
+
+<body>
+
+  <img id="static-image" src="porte1.png" alt="静止画">
+  <img id="p2-image" src="porte2.png" alt="無効ワード" />
+  <img id="p4-image" src="porte4.png" alt="porte4" />
+
+  <video id="main-video" playsinline muted></video>
+
+  <div class="footer">
+    <button id="start-btn">▶ ポルテ おこしてね</button>
+  </div>
+
+  <script>
+    const btn = document.getElementById("start-btn");
+    const staticImg = document.getElementById("static-image");
+    const p2Img = document.getElementById("p2-image");
+    const p4Img = document.getElementById("p4-image");
+    const mainVideo = document.getElementById("main-video");
+
+    let isListening = false;
+    let waitingKeywords = true;
+    let currentVideoKey = ""; // 現在再生中のキーを記録
+
+    // 動画ファイルのリスト（ここですべて管理）
+    const videoFiles = {
+      p1: "p1.mp4", p1rev: "p1rev.mp4", p2: "p2.mp4", p3: "p3.mp4",
+      p4: "p4.mp4", p5: "p5.mp4", p6: "p6.mp4", p7: "p7.mp4",
+      p8: "p8.mp4", p9: "p9.mp4", p10: "p10.mp4", p11: "p11.mp4",
+      p12: "p12.mp4", p13: "p13.mp4", p14: "p14.mp4", p15: "p15.mp4",
+      p16: "p16.mp4", p17: "p17.mp4", p18: "p18.mp4", p19: "p19.mp4",
+      p20: "p20.mp4", p21: "p21.mp4", p22: "p22.mp4", p23: "p23.mp4",
+      p24: "p24.mp4", p25: "p25.mp4", p26: "p26.mp4"
+    };
+
+    // 動画切り替えの核心部分
+    async function switchVideo(key) {
+      if (!videoFiles[key]) return;
+      currentVideoKey = key;
+
+      // 1. 画像の制御
+      staticImg.style.display = "none";
+      p2Img.style.display = "none";
+      p4Img.style.display = "none";
+
+      // 2. プレイヤーの設定
+      mainVideo.style.display = "block";
+      
+      // 音声が必要な動画(p2, p3)の判定
+      if (key === "p2" || key === "p3") {
+        mainVideo.muted = false;
+        mainVideo.volume = 1.0;
+      } else {
+        mainVideo.muted = true;
+        mainVideo.volume = 0;
+      }
+
+      // ループ設定 (p10のみループ)
+      mainVideo.loop = (key === "p10");
+
+      // 3. ソースを入れ替えて再生
+      // ここで一度srcを空にすることでメモリを解放します
+      mainVideo.src = videoFiles[key];
+      mainVideo.load();
+
+      try {
+        await mainVideo.play();
+      } catch (e) {
+        console.warn("Playback error:", e);
+      }
+    }
+
+    // 動画終了時の処理
+    mainVideo.onended = () => {
+      if (currentVideoKey === "p1rev") {
+        // おやすみ等の後は最初の状態に戻る
+        mainVideo.style.display = "none";
+        staticImg.style.display = "block";
+        waitingKeywords = true;
+      } else if (currentVideoKey !== "p10") {
+        // それ以外はすべて待機動画(p10)へ
+        switchVideo("p10");
+      }
+    };
+
+    function initRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) { return; }
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+
+      // キーワード定義（元のコードと同じ）
+      const keywords1 = /(ぽるて|ポルテ|ぽーちゃん|ぽおちゃん|ぽうちゃん|ポーちゃん|おーちゃん|フォーちゃん|こうちゃん|父ちゃん|ふぉるて|フォルテ|来れて|これて|取れて|とれて|降りて|おりて|ポチャン|ぽちゃん)/i;
+      const replyKeywords = /(返事|へんじ|お返事|おへんじ)/i;
+      const secondReplyKeywords = /(もう一回|もういっかい|もう1回)/i;
+      const kawaiiKeywords = /(かわいい|可愛い)/i;
+      const sugoiKeywords = /(すごい|凄い)/i;
+      const rikouKeywords = /(りこう|利口|お利口|おりこう)/i;
+      const sanpoKeywords = /(さんぽ|散歩|お散歩|おさんぽ)/i;
+      const oyatsuKeywords = /(おやつ)/i;
+      const tanoshiiKeywords = /(たのしい|楽しい|楽しかったね|おいしい|美味しい)/i;
+      const byeKeywords = /(またね|おやすみ|じゃあね|じゃーね)/i;
+      const oteKeywords = /(おて|お手|大手|おては|お手は|大手は)/i;
+      const chuKeywords = /(ちゅう|ちゅー|チュー|チュ|注|中|おはよう|おはよー)/i;
+      const iineKeywords = /(いいね|イイネー|いいねー|いいねえ|イイねえ|イイね)/i;
+      const genkiKeywords = /(元気|げんき|ゲンキ)/i;
+      const gomenKeywords = /(ごめん|ゴメン|ごめんよ|ゴメンよ)/i;
+      const sukiKeywords = /(好き|すき|スキ)/i;
+      const arigatoKeywords = /(ありがとう|ありがと)/i;
+      const dekakeKeywords = /(でかけ|出かけ|おでかけ|お出かけ)/i;
+      const doushimasuKeywords = /(どうしますか|どおしますか|どーしますか)/i;
+      const iiKeywords = /(いいでしょ|いいでしょう|いいで)/i;
+      const douzoKeywords = /(どうぞ|食べて|たべて)/i;
+      const choudaiKeywords = /(ちょうだい|頂戴)/i;
+      const kamatteKeywords = /(かまって|構って|あそんで|遊んで|あそぶの|遊ぶの)/i;
+      const ikunoKeywords = /(いくの|行くの|たべるの|食べるの|食べんの|たべんの|いきたい|行きたい|食べたい|たべたい)/i;
+      const nakayoshiKeywords = /(なかよし|仲良し)/i;
+      const doushitaKeywords = /(どうした|どうしたの)/i;
+      const dameKeywords = /(だめ|ダメ|駄目)/i;
+      const oshikkoKeywords = /(おしっこ|オシッコ)/i;
+      const mizuKeywords = /(みず|水|おみず|お水)/i;
+      const unchiKeywords = /(うんち|ウンチ)/i;
+      const dakkoKeywords = /(だっこ|ダッコ|抱っこ)/i;
+      const okawariKeywords = /(おかわり)/i;
+      const kiteKeywords = /(きて|来て|着て)/i;
+      const oideKeywords = /(おいで)/i;
+      const okiteKeywords = /(おきて)/i;
+      const hashiruKeywords = /(はしる|走る)/i;
+      const jumpKeywords = /(じゃんぷ|ジャンプ)/i;
+
+      recognition.onresult = async (event) => {
+        const res = event.results[event.results.length - 1][0];
+        const rawTranscript = (res.transcript || "").trim();
+        const normalizedTranscript = rawTranscript.replace(/ー/g, '').replace(/[ァ-ン]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60)).replace(/\s/g, '').toLowerCase();
+
+        let matched = false;
+        const isP10Active = (currentVideoKey === "p10");
+
+        if (waitingKeywords) {
+          if (keywords1.test(rawTranscript)) {
+            await switchVideo("p1");
+            waitingKeywords = false;
+            matched = true;
+          }
+        } else {
+          // 分岐処理
+          if (keywords1.test(rawTranscript)) { await switchVideo("p3"); matched = true; }
+          else if (oteKeywords.test(rawTranscript)) { await switchVideo("p9"); matched = true; }
+          else if (byeKeywords.test(rawTranscript)) { await switchVideo("p1rev"); matched = true; }
+          else if (replyKeywords.test(rawTranscript)) { await switchVideo("p3"); matched = true; }
+          else if (secondReplyKeywords.test(rawTranscript)) { await switchVideo("p2"); matched = true; }
+          else if (kawaiiKeywords.test(rawTranscript)) { await switchVideo("p13"); matched = true; }
+          else if (nakayoshiKeywords.test(rawTranscript)) { await switchVideo("p14"); matched = true; }
+          else if (doushitaKeywords.test(rawTranscript)) { await switchVideo("p15"); matched = true; }
+          else if (dameKeywords.test(rawTranscript)) { await switchVideo("p16"); matched = true; }
+          else if (oshikkoKeywords.test(rawTranscript)) { await switchVideo("p17"); matched = true; }
+          else if (mizuKeywords.test(rawTranscript)) { await switchVideo("p18"); matched = true; }
+          else if (unchiKeywords.test(rawTranscript)) { await switchVideo("p19"); matched = true; }
+          else if (dakkoKeywords.test(rawTranscript)) { await switchVideo("p20"); matched = true; }
+          else if (okawariKeywords.test(rawTranscript)) { await switchVideo("p21"); matched = true; }
+          else if (kiteKeywords.test(rawTranscript)) { await switchVideo("p22"); matched = true; }
+          else if (oideKeywords.test(rawTranscript)) { await switchVideo("p23"); matched = true; }
+          else if (okiteKeywords.test(rawTranscript)) { await switchVideo("p24"); matched = true; }
+          else if (hashiruKeywords.test(rawTranscript)) { await switchVideo("p25"); matched = true; }
+          else if (jumpKeywords.test(rawTranscript)) { await switchVideo("p26"); matched = true; }
+          else if (sugoiKeywords.test(rawTranscript) || rikouKeywords.test(rawTranscript) || tanoshiiKeywords.test(rawTranscript) || arigatoKeywords.test(rawTranscript) || sukiKeywords.test(rawTranscript)) { await switchVideo("p4"); matched = true; }
+          else if (sanpoKeywords.test(rawTranscript) || oyatsuKeywords.test(rawTranscript)) { await switchVideo("p12"); matched = true; }
+          else if (chuKeywords.test(rawTranscript)) { await switchVideo("p5"); matched = true; }
+          else if (douzoKeywords.test(rawTranscript)) { await switchVideo("p7"); matched = true; }
+          else if (choudaiKeywords.test(rawTranscript)) { await switchVideo("p8"); matched = true; }
+          else if (kamatteKeywords.test(rawTranscript)) { await switchVideo("p6"); matched = true; }
+          else if (ikunoKeywords.test(rawTranscript)) { await switchVideo("p11"); matched = true; }
+          else if (doushimasuKeywords.test(rawTranscript)) {
+            p4Img.style.display = "block";
+            setTimeout(() => { p4Img.style.display = "none"; switchVideo("p10"); }, 1200);
+            matched = true;
+          }
+
+          if (!matched && isP10Active) {
+            p2Img.style.display = "block";
+            setTimeout(() => { p2Img.style.display = "none"; }, 1200);
+          }
+        }
+      };
+
+      recognition.onend = () => { if (isListening) recognition.start(); };
+      recognition.start();
+    }
+
+    btn.addEventListener("click", () => {
+      isListening = true;
+      btn.classList.add("hidden");
+      initRecognition();
+    });
+
+    document.addEventListener('dblclick', () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    });
+  </script>
+</body>
+</html>
