@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ポルテ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="icon" type="image/jpg" href="porte3.png" />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: black; font-family: sans-serif; }
+    
+    video {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 100vw; max-height: 100vh;
+      object-fit: contain;
+      opacity: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+    video.active { opacity: 1; z-index: 2; }
+
+    .footer { position: absolute; top: 10%; width: 100%; text-align: center; color: white; z-index: 100; }
+    button { font-size: 1.2em; padding: 15px 25px; border-radius: 10px; background: rgba(0,0,0,0.8); color: white; border: 2px solid white; cursor: pointer; }
+    
+    #static-image, #p2-image, #p4-image {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      max-width: 100vw; max-height: 100vh; z-index: 10;
+    }
+    #p2-image, #p4-image { display: none; z-index: 20; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <img id="static-image" src="porte1.png">
+  <img id="p2-image" src="porte2.png">
+  <img id="p4-image" src="porte4.png">
+
+  <div id="video-container">
+    <video id="p1-v" src="p1.mp4" playsinline muted preload="auto"></video>
+    <video id="p1rev-v" src="p1rev.mp4" playsinline muted preload="auto"></video>
+    <video id="p2-v" src="p2.mp4" playsinline muted preload="auto"></video>
+    <video id="p3-v" src="p3.mp4" playsinline muted preload="auto"></video>
+    <video id="p4-v" src="p4.mp4" playsinline muted preload="auto"></video>
+    <video id="p5-v" src="p5.mp4" playsinline muted preload="auto"></video>
+    <video id="p6-v" src="p6.mp4" playsinline muted preload="auto"></video>
+    <video id="p7-v" src="p7.mp4" playsinline muted preload="auto"></video>
+    <video id="p8-v" src="p8.mp4" playsinline muted preload="auto"></video>
+    <video id="p9-v" src="p9.mp4" playsinline muted preload="auto"></video>
+    <video id="p10-v" src="p10.mp4" playsinline muted preload="auto" loop></video>
+    <video id="p11-v" src="p11.mp4" playsinline muted preload="auto"></video>
+    <video id="p12-v" src="p12.mp4" playsinline muted preload="auto"></video>
+    <video id="p13-v" src="p13.mp4" playsinline muted preload="auto"></video>
+    <video id="p14-v" src="p14.mp4" playsinline muted preload="auto"></video>
+    <video id="p15-v" src="p15.mp4" playsinline muted preload="auto"></video>
+    <video id="p16-v" src="p16.mp4" playsinline muted preload="auto"></video>
+    <video id="p17-v" src="p17.mp4" playsinline muted preload="auto"></video>
+    <video id="p18-v" src="p18.mp4" playsinline muted preload="auto"></video>
+    <video id="p19-v" src="p19.mp4" playsinline muted preload="auto"></video>
+    <video id="p20-v" src="p20.mp4" playsinline muted preload="auto"></video>
+    <video id="p21-v" src="p21.mp4" playsinline muted preload="auto"></video>
+    <video id="p22-v" src="p22.mp4" playsinline muted preload="auto"></video>
+    <video id="p23-v" src="p23.mp4" playsinline muted preload="auto"></video>
+    <video id="p24-v" src="p24.mp4" playsinline muted preload="auto"></video>
+    <video id="p25-v" src="p25.mp4" playsinline muted preload="auto"></video>
+    <video id="p26-v" src="p26.mp4" playsinline muted preload="auto"></video>
+  </div>
+
+  <div class="footer">
+    <button id="start-btn">▶ ポルテ おこしてね</button>
+  </div>
+
+  <script>
+    const btn = document.getElementById("start-btn");
+    const staticImg = document.getElementById("static-image");
+    const p2Img = document.getElementById("p2-image");
+    const p4Img = document.getElementById("p4-image");
+    const allVideos = Array.from(document.querySelectorAll('video'));
+    
+    // 音声ファイルをメモリ上に保持
+    const audioFiles = {
+      p2: new Audio("p2.mp3"),
+      p3: new Audio("p3.mp3")
+    };
+
+    let activeKey = "";
+    let isListening = false;
+    let waitingKeywords = true;
+
+    // 音声の「再生許可」をAndroidから得るための関数
+    function unlockMedia() {
+      allVideos.forEach(v => { v.play().then(() => v.pause()); });
+      Object.values(audioFiles).forEach(a => {
+        a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+      });
+    }
+
+    async function switchVideo(key) {
+      const nextV = document.getElementById(key + "-v");
+      if (!nextV || (activeKey === key && key === "p10")) return;
+
+      // 1. すべて停止
+      allVideos.forEach(v => { v.pause(); v.classList.remove('active'); });
+      Object.values(audioFiles).forEach(a => { a.pause(); a.currentTime = 0; });
+
+      // 2. 音声を「即座に」先行再生
+      if (audioFiles[key]) {
+        audioFiles[key].play().catch(e => console.log("Audio play error"));
+      }
+
+      // 3. 映像を表示
+      staticImg.classList.add('hidden');
+      p2Img.style.display = "none";
+      p4Img.style.display = "none";
+      nextV.classList.add('active');
+      nextV.currentTime = 0;
+
+      try {
+        await nextV.play();
+      } catch (e) { console.error(e); }
+      
+      activeKey = key;
+    }
+
+    allVideos.forEach(v => {
+      v.onended = () => {
+        const key = v.id.replace('-v', '');
+        if (key === "p1rev") {
+          v.classList.remove('active'); staticImg.classList.remove('hidden');
+          waitingKeywords = true; activeKey = "";
+        } else if (key !== "p10") {
+          switchVideo("p10");
+        }
+      };
+    });
+
+    function initRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = true;
+
+      const k_wake = /ぽるて|ポルテ|ぽーちゃん|ポーちゃん|ふぉるて|おりて/i;
+      const k_ote = /おて|お手/i;
+      const k_bye = /またね|おやすみ/i;
+      const k_reply = /返事|へんじ|お返事/i;
+      const k_again = /もう一回|もういっかい/i;
+      const k_kawaii = /かわいい|可愛い/i;
+      const k_nakayoshi = /なかよし|仲良し/i;
+      const k_doushita = /どうした/i;
+      const k_dame = /だめ|ダメ/i;
+      const k_oshikko = /おしっこ/i;
+      const k_mizu = /みず|お水/i;
+      const k_unchi = /うんち/i;
+      const k_dakko = /だっこ/i;
+      const k_okawari = /おかわり/i;
+      const k_kite = /きて|来て/i;
+      const k_oide = /おいで/i;
+      const k_okite = /おきて/i;
+      const k_hashiru = /はしる|走る/i;
+      const k_jump = /じゃんぷ|ジャンプ/i;
+      const k_sugoi = /すごい|りこう|楽しい|おいしい|いいね|元気|好き|ありがとう/i;
+      const k_sanpo = /さんぽ|散歩|おやつ/i;
+      const k_chu = /ちゅう|ちゅー|おはよう/i;
+      const k_douzo = /どうぞ|たべて/i;
+      const k_choudai = /ちょうだい/i;
+      const k_kamatte = /かまって|あそんで/i;
+      const k_ikuno = /いくの|いきたい/i;
+      const k_doushimasu = /どうしますか/i;
+
+      recognition.onresult = (event) => {
+        const text = event.results[event.results.length - 1][0].transcript;
+        let matched = false;
+
+        if (waitingKeywords) {
+          if (k_wake.test(text)) { switchVideo("p1"); waitingKeywords = false; matched = true; }
+        } else {
+          if (k_wake.test(text)) { switchVideo("p3"); matched = true; }
+          else if (k_ote.test(text)) { switchVideo("p9"); matched = true; }
+          else if (k_bye.test(text)) { switchVideo("p1rev"); matched = true; }
+          else if (k_reply.test(text)) { switchVideo("p3"); matched = true; }
+          else if (k_again.test(text)) { switchVideo("p2"); matched = true; }
+          else if (k_kawaii.test(text)) { switchVideo("p13"); matched = true; }
+          else if (k_nakayoshi.test(text)) { switchVideo("p14"); matched = true; }
+          else if (k_doushita.test(text)) { switchVideo("p15"); matched = true; }
+          else if (k_dame.test(text)) { switchVideo("p16"); matched = true; }
+          else if (k_oshikko.test(text)) { switchVideo("p17"); matched = true; }
+          else if (k_mizu.test(text)) { switchVideo("p18"); matched = true; }
+          else if (k_unchi.test(text)) { switchVideo("p19"); matched = true; }
+          else if (k_dakko.test(text)) { switchVideo("p20"); matched = true; }
+          else if (k_okawari.test(text)) { switchVideo("p21"); matched = true; }
+          else if (k_kite.test(text)) { switchVideo("p22"); matched = true; }
+          else if (k_oide.test(text)) { switchVideo("p23"); matched = true; }
+          else if (k_okite.test(text)) { switchVideo("p24"); matched = true; }
+          else if (k_hashiru.test(text)) { switchVideo("p25"); matched = true; }
+          else if (k_jump.test(text)) { switchVideo("p26"); matched = true; }
+          else if (k_sugoi.test(text)) { switchVideo("p4"); matched = true; }
+          else if (k_sanpo.test(text)) { switchVideo("p12"); matched = true; }
+          else if (k_chu.test(text)) { switchVideo("p5"); matched = true; }
+          else if (k_douzo.test(text)) { switchVideo("p7"); matched = true; }
+          else if (k_choudai.test(text)) { switchVideo("p8"); matched = true; }
+          else if (k_kamatte.test(text)) { switchVideo("p6"); matched = true; }
+          else if (k_ikuno.test(text)) { switchVideo("p11"); matched = true; }
+          else if (k_doushimasu.test(text)) {
+            p4Img.style.display = "block";
+            setTimeout(() => { p4Img.style.display = "none"; switchVideo("p10"); }, 1200);
+            matched = true;
+          }
+          
+          if (!matched && activeKey === "p10") {
+            p2Img.style.display = "block";
+            setTimeout(() => { p2Img.style.display = "none"; }, 1200);
+          }
+        }
+      };
+      recognition.onend = () => { if (isListening) recognition.start(); };
+      recognition.start();
+    }
+
+    btn.addEventListener("click", () => {
+      isListening = true;
+      btn.classList.add("hidden");
+      unlockMedia(); // 重要：メディアのロックを一括解除
+      setTimeout(initRecognition, 500);
+    });
+  </script>
+</body>
+</html>
